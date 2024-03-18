@@ -3,7 +3,7 @@ This repository contains R code to extract and analyze gray whale calf productio
 Necessary functions are stored in GrayWhaleCalfProduction_fcns.R. Some of the functions in the file may be obsolete and unused. The analytical
 part is conducted via JAGS (Just Another Gibbs Sampler, which can be downloaded from https://sourceforge.net/projects/mcmc-jags/files/. 
 
-It is assumed that this repository is donwloaded to your local computer via RStudio and a project created. Please create three empty folders
+It is assumed that this repository is downloaded to your local computer via RStudio and a project created. Please create three empty folders
 within the project folder and name them "data," "figures," and "RData." 
 
 In 2023, new data extraction code was developed due to some inconsistencies that were found in the previous version (Collating and Formatting Passdown.R).
@@ -12,7 +12,7 @@ use the new extraction method. I appended the new estimate for the 2023 season t
 the table was replaced with the old version. These reports can be found in Report_calf_production_2022.Rmd and Report_calf_production_2023.Rmd.
 
 The order of the data processing and analysis should be:
-1. Raw data should be saved in the "data/All data" directory. Foloder names are C_C YYYY, where YYYY indicates a four-digit year. 
+1. Raw data should be saved in the "data/All data" directory. Folder names are C_C YYYY, where YYYY indicates a four-digit year. 
 2. Extract Excel Data.Rmd
 3. Run calf_production_jags.R
 4. Edit Report_calf_production_2023.Rmd to create a report.

@@ -1,0 +1,96 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This notebook is used to extract data from original data files in the Excel format. 
+
+```{r setup}
+rm(list=ls())
+library(tidyverse)
+library(lubridate)
+library(readxl)
+source("GrayWhaleCalfProduction_fcns.R")
+
+data.dir <- "data/All data/"
+#out.dir <- "data/Processed data/"    # completed in May 2022 but needs revisions
+
+# v3 includes the new shift definitions
+ver <- "v3"  # v2
+
+out.dir <- paste0("data/Processed data ", ver, "/")  # for revising outputs
+if (!exists(out.dir)) dir.create(out.dir)
+
+out.formatted.dir <- paste0("data/Formatted Annual Data ", ver, "/")
+if (!exists(out.formatted.dir)) dir.create(out.formatted.dir)
+
+# Regardless of if output file exists, this will overwrite the output files
+save.files <- TRUE
+start.time <- "100"   # This is for v3. For v2, should be year specific.
+
+
+```
+
+Event code:
+1 = START EFFORT
+2 = CHANGE OBSERVERS
+3 = CHANGE SIGHTING CONDITIONS
+4 = GRAY WHALE SIGHTING
+5 = END EFFORT
+6 = OTHER SPECIES SIGHTING
+
+2023-06-01 A HA MOMENT. RATHER THAN MAKING ARBITRARY STARTING TIME OF 0630 OR 0700, CREATE 3-HR SHIFTS STARTING FROM 0100. 
+
+NEW FUNCTIONS WERE CREATED AND TESTED. THE NEXT CHUNK WILL RUN ALL YEARS. 
+
+```{r}
+years <- c(1994:2019, 2021:2023)
+inshore.xls.file.idx <- c(1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1)
+offshore.xls.file.idx <- c(2,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,3,3,3,2,2,3,2,NA,NA,NA,NA,NA,NA)
+
+for (k in 1:length(years)){
+  Year <- years[k]
+  dir.name <- paste0("C_C ", Year)
+  
+  xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
+  xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[inshore.xls.file.idx[k]])
+  if (!is.na(offshore.xls.file.idx[k])){
+    xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[offshore.xls.file.idx[k]])
+    
+  }
+  
+  idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Year))
+  if (Year < 2017){
+    out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
+                             list.sheet.names.offshore[[idx.list]],
+                             list.col.types.inshore[[idx.list]], 
+                             list.col.types.offshore[[idx.list]],
+                             list.col.names.inshore[[idx.list]], 
+                             list.col.names.offshore[[idx.list]],
+                             Year, 
+                             xls.file.name.inshore, xls.file.name.offshore,
+                             start.time)
+    
+  } else {
+    out.list <- get.data.inshore.only(Year = Year,
+                                      xls.file.name = xls.file.name.inshore,
+                                      sheet.name = list.sheet.names.inshore[[idx.list]],
+                                      col.types = list.col.types.inshore[[idx.list]],
+                                      col.names = list.col.names.inshore[[idx.list]],
+                                      start.time = start.time)
+  }
+  
+  if (save.files){
+    # Creates file names and saves files
+    files <- file.names(out.dir = out.dir, 
+                        ver = ver, 
+                        Year = Year, 
+                        out.list = out.list)
+    
+  }
+  
+  
+}
+
+```
+

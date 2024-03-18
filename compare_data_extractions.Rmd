@@ -1,0 +1,1601 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This notebook compares results between Formatted Annual Data and Formatted Annual Data v2. The former was done by J. Stewart, whereas the latter was done by me. Results should be the same but a few inconsistencies were found recently (Apr 2023). So, I'm comparing each one to see where the problem is.
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(lubridate)
+library(flextable)
+library(readr)
+
+source("Piedras_Blancas_fcns.R")
+
+```
+
+
+```{r}
+dir.1 <- "data/Formatted Annual Data/"
+dir.2 <- "data/Formatted Annual Data v3/"
+data.dir <- "data/All data/"
+
+files.1 <- list.files(path = dir.1, 
+                    pattern = "Formatted.csv")
+
+col.def.1 <- cols(Week = col_integer(),
+                  Date = col_date(format = "%d-%b-%y"),
+                  Effort = col_double(),
+                  Sightings = col_integer())
+
+col.def.1.2 <- cols(Week = col_integer(),
+                  Date = col_date(format = "%d-%b-%Y"),
+                  Effort = col_double(),
+                  Sightings = col_integer())
+
+col.def.1.3 <- cols(Week = col_integer(),
+                    Date = col_date(format = "%Y-%m-%d"),
+                    Effort = col_double(),
+                    Sightings = col_integer())
+
+col.def.1.1997 <- cols(Week = col_integer(),
+                       Date = col_character(), #date(format = "%d-%b-%y"),
+                       Effort = col_double(),
+                       Sightings = col_integer())
+
+files.2 <- list.files(path = dir.2, 
+                    pattern = "Formatted_inshore_v3.csv")
+
+col.def.2 <- cols(Week = col_integer(),
+                  Date = col_date(format = "%Y-%m-%d"),
+                  Shift = col_integer(),
+                  Effort = col_double(),
+                  Sightings = col_integer())
+
+fcn.compare.data <- function(data.1, data.2, year){
+  data.1 %>% 
+    group_by(Date) %>%
+    summarize(daily.effort.1 = sum(Effort),
+              daily.sightings.1 = sum(Sightings)) %>%
+    mutate(Date.char = as.character(Date)) %>%
+    dplyr::select(-Date) -> daily.summary.1 
+  
+  data.2 %>% 
+    group_by(Date) %>%
+    summarize(daily.effort.2 = sum(Effort),
+              daily.sightings.2 = sum(Sightings)) %>%
+    mutate(Date.char = as.character(Date)) %>%
+    dplyr::select(-Date) -> daily.summary.2 
+  
+  daily.summary.1 %>% 
+    left_join(daily.summary.2, by = "Date.char") %>%
+    mutate(dif.effort = daily.effort.1 - daily.effort.2,
+           dif.sightings = daily.sightings.1 - daily.sightings.2) -> daily.summary.1.2
+
+  daily.summary.1.2 %>% 
+    filter(!is.na(dif.effort)) %>%
+    filter(!is.na(dif.sightings)) -> daily.summary.1.2
+  
+  p.1 <- ggplot(daily.summary.1.2) +
+    geom_point(aes(x = as.Date(Date.char), y = dif.effort)) +
+    xlab("Date") + 
+    ylab("Differences in effort") +
+    ggtitle(year)
+    
+  p.2 <- ggplot(daily.summary.1.2) +
+    geom_point(aes(x = as.Date(Date.char), y = dif.sightings),
+               color = "red") +
+    xlab("Date") + 
+    ylab("Differences in # sightings") +
+    ggtitle(year)
+  
+  p. <- cowplot::plot_grid(p.1, p.2)
+  
+  out.list <- list(data.1 = data.1,
+                   data.2 = data.2,
+                   daily.summary.1 = daily.summary.1,
+                   daily.summary.2 = daily.summary.2,
+                   daily.summary.1.2 = daily.summary.1.2,
+                   figure = p.,
+                   year = year)
+  return(out.list)  
+}
+
+```
+
+
+```{r}
+years <- c(1994:2019, 2021, 2022)
+col.defs.1 <- list(col.def.1, col.def.1.1997, col.def.1.2, col.def.1.3)
+col.defs.1.idx <- c(rep(1, 3), rep(2, 23), 3, 4)
+
+daily.summary.list <- list()
+k <- 1
+
+for (k in 1:length(years)){
+  
+  Y <- years[k]
+  
+  if (col.defs.1.idx[k] == 2){
+    data.1 <- read_csv(file = paste0(dir.1, Y, " Formatted.csv"),
+                       col_types = col.defs.1[[col.defs.1.idx[k]]]) %>%
+      mutate(Date.1 = as.Date(paste0(Date, "-", Y), format = "%d-%b-%Y")) %>%
+      transmute(Week = Week, 
+                Date = Date.1, 
+                Effort = Effort, 
+                Sightings = Sightings)
+  } else if (col.defs.1.idx[k] == 4){
+    data.1 <- read_csv(file = paste0(dir.1, Y, " Formatted.csv"),
+                       col_types = col.defs.1[[col.defs.1.idx[k]]]) 
+    
+  } else {
+    data.1 <- read_csv(file = paste0(dir.1, Y, " Formatted.csv"),
+                       col_types = col.defs.1[[col.defs.1.idx[k]]]) 
+    
+  }
+  
+  data.2 <- read_csv(file = paste0(dir.2, Y, " Formatted_inshore_v3.csv"),
+                     col_types = col.def.2)
+  
+  daily.summary.list[[k]]  <- fcn.compare.data(data.1, data.2, Y)
+  
+}
+
+
+```
+
+
+# 1994 
+
+```{r}
+Y <- 1994
+daily.summary.list[[which(years == Y)]]$figure 
+```
+
+
+```{r}
+# Code chunk from Extract Excel data.Rmd
+dir.name <- paste0("C_C ", Y)
+start.time <- "100"
+
+xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
+xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[1])
+xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[2])
+
+# lists in the following lines are stored in Piedras_Blancas_fcns.R
+
+idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Y))
+out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
+                         list.sheet.names.offshore[[idx.list]],
+                         list.col.types.inshore[[idx.list]], 
+                         list.col.types.offshore[[idx.list]],
+                         list.col.names.inshore[[idx.list]], 
+                         list.col.names.offshore[[idx.list]],
+                         Year = Y, 
+                         xls.file.name.inshore, xls.file.name.offshore,
+                         start.time)
+
+```
+
+## Effort:
+```{r}
+effort.dif.list <- find.effort.dif(Y, daily.summary.list, out.list)
+
+# length(effort.dif.list$date.dif)
+```
+
+There were `r length(effort.dif.list$date.dif)` differences between the two extraction algorithms for year `r Y`. Many differences come from the first shift starting at 0630, rather than 0700. In the v1 extraction algorithm, the first shift was assumed to start at 0700, so 30 min were removed, whereas the v2 algorithm counts all data. Spot checks show v2 doing a good job counting all. v1 seems to ignore sea state > 4. 
+
+There are a few shift 5... I think they should be deleted. They have been removed. 2023-05-12
+
+Here are the differences.
+
+### `r effort.dif.list$date.dif[1]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[1]]
+```
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[1]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[1]]
+
+```
+
+Observation started at 0630 (Event = 1). So, I think it makes sense to include extra 30 minutes.
+
+
+### `r effort.dif.list$date.dif[2]`
+
+There were `r length(effort.dif.list$raw.data[[2]])` differences between V1 and V3 extractions within `r effort.dif.list$date.dif[2]`.
+
+#### Shift `r effort.dif.list$dif.shift[[2]][1]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[2]][[1]]
+```
+
+
+The first shift started at 0631 and should have ended at 0700, which was not recorded in the v1 extraction.
+
+The v1 extraction removed 29 minutes of observation from 0631 to 0700.
+```{r}
+
+effort.dif.list$dif.1[[2]]
+
+```
+
+In the v3 extraction, the 29 minunte period was counted.
+
+```{r}
+effort.dif.list$dif.2[[2]]
+```
+
+#### Shift `r effort.dif.list$dif.shift[[2]][2]`
+
+During the shift from 1000 to 1300, sea state changed to 5 from 1230 to 1252 (22 minutes). Consequently, the total effort for this shift should be 158 minutes (2.63 hrs). The v1 extraction calculated 1.80 hrs.
+
+```{r}
+effort.dif.list$raw.data[[2]][[2]]
+```
+
+
+#### Shift `r effort.dif.list$dif.shift[[2]][3]`
+
+```{r}
+effort.dif.list$raw.data[[2]][[3]]
+```
+
+There was no effort for this shift because the sea state was at 5 the entire time. The v1 extraction calculated one hour of observation. 
+
+
+### `r effort.dif.list$date.dif[3]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[3]]
+```
+
+Because of the high sea state during the shift from 1600 to 1900, no effort should have been calculated. 
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[3]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[3]]
+
+```
+
+V1 computed 0.62 hrs of effort for Shift 4. This should have been zero. 
+
+
+### `r effort.dif.list$date.dif[4]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[4]]
+```
+
+Effort from 0630 to 0700 was not recorded under the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[4]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[4]]
+
+```
+
+### `r effort.dif.list$date.dif[5]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[5]]
+```
+
+Effort from 0630 to 0700 was not recorded by the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[5]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[5]]
+
+```
+
+### `r effort.dif.list$date.dif[6]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[6]]
+```
+Effort from 0629 to 0700 was not recorded by the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[6]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[6]]
+
+```
+
+### `r effort.dif.list$date.dif[7]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[7]]
+```
+
+Effort from 0630 to 0700 was not recorded by the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[7]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[7]]
+
+```
+
+### `r effort.dif.list$date.dif[8]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[8]]
+```
+
+Effort from 0630 to 0700 was not recorded by the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[8]]
+
+```
+
+Version 3 extraction:
+
+```{r}
+effort.dif.list$dif.2[[8]]
+
+```
+
+### `r effort.dif.list$date.dif[9]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[9]]
+```
+
+Effort from 0630 to 0700 was not recorded by the v1 extraction.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[9]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[9]]
+
+```
+
+### `r effort.dif.list$date.dif[10]`
+
+There were `r length(effort.dif.list$raw.data[[10]])` differences for `r effort.dif.list$date.dif[10]`.
+
+Version 1 extraction:
+
+```{r}
+effort.dif.list$dif.1[[10]]
+```
+
+Version 3 extraction:
+
+```{r}
+effort.dif.list$dif.2[[10]]
+```
+
+
+#### Shift `r effort.dif.list$dif.shift[[10]][1]`
+
+```{r}
+effort.dif.list$raw.data[[10]][[1]]
+```
+
+Effort from 0628 to 0700 was not recorded by the v1 extraction.
+
+#### Shift `r effort.dif.list$dif.shift[[10]][2]`
+
+```{r}
+out.list$shift.all.inshore %>% 
+  filter(Date == "1994-03-30") %>%
+  filter(Minutes_since_0000 > 590 & Minutes_since_0000 < 900)
+```
+
+There was no record for the shift from 1000 to 1300. Consequently the effort for this shift should have been zero. 
+
+#### Shift `r effort.dif.list$dif.shift[[10]][3]`
+
+```{r}
+effort.dif.list$raw.data[[10]][[3]]
+```
+
+For this shift, effort was from 1450 to 1600 (70 minutes or 1.17 hrs). The v1 extraction computed 3 hrs for this shift. 
+
+```{r}
+out.list$shift.all.inshore %>% filter(Date == "1994-03-30")
+
+```
+
+
+### `r effort.dif.list$date.dif[11]`
+There were `r length(effort.dif.list$raw.data[[11]])` differences between V1 and V3 extractions within `r effort.dif.list$date.dif[11]`.
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[11]]
+
+```
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[11]]
+
+```
+
+#### Shift `r effort.dif.list$dif.shift[[11]][1]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[11]][1]
+```
+
+The shift from 0630 to 0700 was omitted in the v1 extraction
+
+#### Shift `r effort.dif.list$dif.shift[[11]][2]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[11]][2]
+```
+
+Visibility was 5 from 900 to 930. So, the total effort for this shift (0700-1000) should have been 2.5 hrs. 
+
+#### Shift `r effort.dif.list$dif.shift[[11]][3]`
+
+```{r}
+effort.dif.list$raw.data[[11]][3]
+```
+
+
+Sea state was 5 from 1600 to 1700. Effort was from 1700 to 1800 (1 hr). The v1 extraction computed 1.72 hrs. 
+
+
+### `r effort.dif.list$date.dif[12]`
+
+Version 1 extraction:
+
+```{r}
+effort.dif.list$dif.1[[12]]
+```
+
+Version 3 extraction:
+
+```{r}
+effort.dif.list$dif.2[[12]]
+```
+
+
+Data:
+```{r}
+effort.dif.list$raw.data[[12]]
+```
+
+Effort from 0630 to 0700 was omitted in v1.
+
+#### `r effort.dif.list$date.dif[13]`
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[13]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[13]]
+
+```
+
+Data:
+```{r}
+effort.dif.list$raw.data[[13]]
+```
+
+Not sure how V1 computed 2.33 hrs for the shift from 1000 to 1300.
+
+
+### `r effort.dif.list$date.dif[14]`
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[14]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[14]]
+
+```
+
+
+Data:
+```{r}
+effort.dif.list$raw.data[[14]]
+```
+
+Because Visibility was 5 for the entire shift 4, the effort should have been zero. 
+
+### `r effort.dif.list$date.dif[15]`
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[15]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[15]]
+
+```
+
+Data:
+```{r}
+effort.dif.list$raw.data[[15]]
+```
+
+Not sure how V1 got 2.5 hrs for Shift 2. Looks like 3 hrs.
+
+### `r effort.dif.list$date.dif[16]`
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[16]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[16]]
+
+```
+
+Data:
+```{r}
+effort.dif.list$raw.data[[16]]
+```
+
+1600 - 1640 was Visibility 5, so it should be discarded. 1640 - 1900 equals to 140 minutes or 2.33 hrs.
+
+## Sightings:
+
+```{r}
+
+sightings.dif.list <- find.sightings.dif(Y, daily.summary.list, out.list)
+
+```
+
+There were `r length(sightings.dif.list$date.dif)` differences between V1 and V2 extractions.
+
+
+### `r sightings.dif.list$date.dif[1]`
+
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[1]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+sightings.dif.list$dif.2[[1]]
+
+```
+
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[1]][[1]] %>%
+  dplyr::select(!c(Minutes_since_T0, Obs, Year, SeaState.num, Vis.num))
+```
+
+There are only 4 sightings during Shift 2 on 4/22. 
+
+### `r sightings.dif.list$date.dif[2]`
+
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[2]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+sightings.dif.list$dif.2[[2]]
+
+```
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[2]][[1]] %>%
+  dplyr::select(!c(Minutes_since_T0, Obs, Year, SeaState.num, Vis.num)) 
+```
+
+Only 9 mother-calf pairs were observed on 5/3 1600-1900.
+
+### `r sightings.dif.list$date.dif[3]`
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[3]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+sightings.dif.list$dif.2[[3]]
+
+```
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[3]][[1]] %>%
+  dplyr::select(!c(Minutes_since_T0, Obs, Year, SeaState.num, Vis.num))  
+```
+
+Only 2 were observed.
+
+### `r sightings.dif.list$date.dif[4]`
+
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[4]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+sightings.dif.list$dif.2[[4]]
+
+```
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[4]][[1]] %>%
+  dplyr::select(!c(Minutes_since_T0, Obs, Year, SeaState.num, Vis.num))  
+```
+
+The only sighting during shift 0700-1000 was during an off period due to high visibility code (5). So, it should be excluded. 
+
+1995 
+
+```{r}
+Y <- 1995
+daily.summary.list[[which(years == Y)]]$figure 
+```
+
+Some differences found... 
+```{r}
+
+# Code chunk from Extract Excel data.Rmd
+dir.name <- paste0("C_C ", Y)
+
+xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
+xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[1])
+xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[2])
+
+# lists in the following lines are stored in Piedras_Blancas_fcns.R
+
+idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Y))
+out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
+                         list.sheet.names.offshore[[idx.list]],
+                         list.col.types.inshore[[idx.list]], 
+                         list.col.types.offshore[[idx.list]],
+                         list.col.names.inshore[[idx.list]], 
+                         list.col.names.offshore[[idx.list]],
+                         Year = Y, 
+                         xls.file.name.inshore, xls.file.name.offshore,
+                         start.time)
+
+```
+
+
+## Effort:
+```{r}
+
+effort.dif.list <- find.effort.dif(Y, daily.summary.list, out.list)
+
+#length(effort.dif.list$date.dif)
+```
+
+
+There were `r length(effort.dif.list$date.dif)` days with more than one differences between the two extraction methods.
+
+
+### `r effort.dif.list$date.dif[1]`
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[1]]
+
+```
+
+
+Version 3 extraction:
+```{r}
+effort.dif.list$dif.2[[1]]
+
+```
+
+Data:
+```{r}
+effort.dif.list$raw.data[[1]]
+```
+
+Sea state changed from 4 to 5 at 1230, so the effort should have been 2.5 hrs (1000 - 1230).
+
+START HERE 2023-06-23
+
+2. `r effort.dif.list$date.dif[2]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[2]]
+```
+
+Three hours of effort
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[2]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[2]]
+
+```
+
+
+
+4. `r effort.dif.list$date.dif[4]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[4]]
+```
+
+Three hours of effort
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[4]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[4]]
+
+```
+
+
+5. `r effort.dif.list$date.dif[5]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[5]]
+```
+
+Three hours of effort
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[5]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[5]]
+
+```
+
+
+6. `r effort.dif.list$date.dif[6]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[6]]
+```
+
+Three hours of effort
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[6]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[6]]
+
+```
+
+
+7. `r effort.dif.list$date.dif[7]`
+
+There were `r length(effort.dif.list$raw.data[[7]])` discrepancies for this date.
+
+(1) 
+Data:
+```{r}
+effort.dif.list$raw.data[[7]][1]
+```
+
+For shift 2, there were 3 hrs of effort.
+
+
+```{r}
+effort.dif.list$raw.data[[7]][2]
+```
+
+For shift 3, sea state changed from 4 to 5 at 1407, then changed back to 4 at 1430, so the effort should have been 67 + 90 minutes (157 minutes or 2.617 hrs).
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[7]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[7]]
+
+```
+
+
+8. `r effort.dif.list$date.dif[8]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[8]]
+```
+
+Three hours of effort
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[8]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[8]]
+
+```
+
+
+
+9. `r effort.dif.list$date.dif[9]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[9]]
+```
+
+Effort was only from 1024 to 1112, or 48 minutes (0.8 hrs). 
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[9]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[9]]
+
+```
+
+
+10. `r effort.dif.list$date.dif[10]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[10]]
+```
+
+Sea state changed from 4 to 5 at 1155, so the effort was 1 hr and 55 minutes (1.9167 hrs)
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[10]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[10]]
+
+```
+
+
+11. `r effort.dif.list$date.dif[11]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[11]]
+```
+
+No effort due to high sea state.
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[11]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[11]]
+
+```
+
+
+
+12. `r effort.dif.list$date.dif[12]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[12]]
+```
+
+Visibility changed from 4 to 5 at 1210, then changed back to 4 at 1246 but returned to 5 at 1250. So, total effort should be 1000-1210 (2.167 hrs) and 1246 - 1250 (0.067 hrs), or 2.234 hrs.
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[12]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[12]]
+
+```
+
+
+
+13. `r effort.dif.list$date.dif[13]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[13]]
+```
+
+Three hours of effort.
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[13]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[13]]
+
+```
+
+
+
+
+13. `r effort.dif.list$date.dif[13]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[13]]
+```
+
+Three hours of effort
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[13]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[13]]
+
+```
+
+
+
+14. `r effort.dif.list$date.dif[14]`
+
+There were `r length(effort.dif.list$raw.data[[14]])` differences for this date.
+
+(1)
+
+Data:
+```{r}
+effort.dif.list$raw.data[[14]][[1]]
+```
+
+Only 40 minutes of effort (0.67 hrs)
+
+(2)
+```{r}
+effort.dif.list$raw.data[[14]][[2]]
+```
+
+Effort were 1023 - 1042 (0.317 hrs), 1051 - 1055 (0.067 hrs), 1200 - 1300 (1 hr). So a total of 1.384 hrs.
+
+
+(3)
+```{r}
+effort.dif.list$raw.data[[14]][[3]]
+```
+
+Visibility was high until 1406, and from 1550 to 1600. So, the total effort should be 1406-1550, 1 hr and 44 min (1.73 hrs). 
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[14]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[14]]
+
+```
+
+
+
+15. `r effort.dif.list$date.dif[15]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[15]]
+```
+
+Effort was from 700 to 928, or 2.467 hrs.
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[15]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[15]]
+
+```
+
+
+
+16. `r effort.dif.list$date.dif[16]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[16]]
+```
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[16]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[16]]
+
+```
+
+
+
+17. `r effort.dif.list$date.dif[17]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[17]]
+```
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[17]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[17]]
+
+```
+
+
+
+18. `r effort.dif.list$date.dif[18]`
+
+Data:
+(1)
+```{r}
+effort.dif.list$raw.data[[18]][[1]]
+```
+
+(2)
+```{r}
+effort.dif.list$raw.data[[18]][[2]]
+```
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[18]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[18]]
+
+```
+
+
+
+Sightings
+
+```{r}
+
+sightings.dif.list <- find.sightings.dif(Y, daily.summary.list, out.list)
+
+```
+
+1. `r sightings.dif.list$date.dif[1]`
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[1]] 
+```
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[1]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+sightings.dif.list$dif.2[[1]]
+
+```
+
+
+2. `r sightings.dif.list$date.dif[2]`
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[2]] 
+```
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[2]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+sightings.dif.list$dif.2[[2]]
+
+```
+
+
+3. `r sightings.dif.list$date.dif[3]`
+
+Data:
+```{r}
+sightings.dif.list$raw.data[[3]] 
+```
+
+Version 1 extraction:
+```{r}
+sightings.dif.list$dif.1[[3]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+sightings.dif.list$dif.2[[3]]
+
+```
+
+
+
+1996 
+
+```{r}
+Y <- 1996
+daily.summary.list[[which(years == Y)]]$figure 
+```
+
+```{r}
+
+# Code chunk from Extract Excel data.Rmd
+dir.name <- paste0("C_C ", Y)
+start.time <- "630"
+
+xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
+xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[1])
+xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[2])
+
+# lists in the following lines are stored in Piedras_Blancas_fcns.R
+
+idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Y))
+out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
+                         list.sheet.names.offshore[[idx.list]],
+                         list.col.types.inshore[[idx.list]], 
+                         list.col.types.offshore[[idx.list]],
+                         list.col.names.inshore[[idx.list]], 
+                         list.col.names.offshore[[idx.list]],
+                         Year = Y, 
+                         xls.file.name.inshore, xls.file.name.offshore,
+                         start.time)
+
+```
+
+
+Effort:
+```{r}
+
+effort.dif.list <- find.effort.dif(Y, daily.summary.list, out.list)
+
+length(effort.dif.list$date.dif)
+```
+
+
+There were `r length(effort.dif.list$date.dif)` days with more than one differences between the two extraction methods.
+
+
+1. `r effort.dif.list$date.dif[1]`
+
+Data:
+```{r}
+effort.dif.list$raw.data[[1]]
+```
+
+
+
+Version 1 extraction:
+```{r}
+effort.dif.list$dif.1[[1]]
+
+```
+
+
+Version 2 extraction:
+```{r}
+effort.dif.list$dif.2[[1]]
+
+```
+
+
+1997 
+
+```{r}
+daily.summary.list[[which(years == 1997)]]$figure 
+```
+
+1998 
+
+```{r}
+daily.summary.list[[which(years == 1998)]]$figure
+```
+
+1999 
+
+```{r}
+daily.summary.list[[which(years == 1999)]]$figure
+```
+
+
+2000 
+
+```{r}
+daily.summary.list[[which(years == 2000)]]$figure
+```
+
+
+2001 
+
+```{r}
+daily.summary.list[[which(years == 2001)]]$figure
+```
+
+
+
+
+2002
+
+```{r}
+daily.summary.list[[which(years == 2002)]]$figure
+```
+
+
+2003
+
+```{r}
+daily.summary.list[[which(years == 2003)]]$figure
+```
+
+2004
+
+```{r}
+daily.summary.list[[which(years == 2004)]]$figure
+```
+
+2005
+
+```{r}
+daily.summary.list[[which(years == 2005)]]$figure
+```
+
+
+2006
+
+```{r}
+daily.summary.list[[which(years == 2006)]]$figure
+```
+
+
+2007
+
+```{r}
+Y <- 2007
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+2008
+
+```{r}
+Y <- 2008
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2009
+
+```{r}
+Y <- 2009
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2010
+
+```{r}
+Y <- 2010
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2011
+
+```{r}
+Y <- 2011
+
+daily.summary.list[[which(years == Y)]]$figure
+
+```
+
+
+2012
+
+```{r}
+Y <- 2012
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2013
+
+```{r}
+Y <- 2013
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2014
+
+```{r}
+Y <- 2014
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2014
+
+```{r}
+Y <- 2014
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2015
+
+```{r}
+Y <- 2015
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2016
+
+```{r}
+Y <- 2016
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2017
+
+```{r}
+Y <- 2017
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2018
+
+```{r}
+Y <- 2018
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+2019
+
+```{r}
+Y <- 2019
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+
+2021
+
+```{r}
+Y <- 2021
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+There are a few discrepancies... 
+
+
+
+2022
+
+```{r}
+Y <- 2022
+
+daily.summary.list[[which(years == Y)]]$figure
+```
+
+In the previous run, ther was no difference in effort. One extra sighting on 2022-03-31 for V1 (4 sightings) compared with V2 (3 sightings). Raw data file (PiedrasBlancas2022SurveyData_postQC_TE.xlsx) contains only three sightings on 2022-03-31. So V2 is correct.
+
+Today... 2023-04-28, there are a lot more differences. Not sure what happened here. I was using old files. Using files that were extracted on 2023-04-19, there was only one difference. Those new files were uploaded to Google folder.
+
+
+
