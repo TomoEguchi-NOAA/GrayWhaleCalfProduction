@@ -15,7 +15,7 @@ The order of the data processing and analysis should be:
 1. Raw data should be saved in the "data/All data" directory. Folder names are C_C YYYY, where YYYY indicates a four-digit year. 
 2. Edit list.sheet.names.inshore, list.col.types.inshore, and list.col.names.inshore in GrayWhaleCalfProduction_fcns.R (if you pull the most recent version, this should be done) 
 3. Run Extract Excel Data.Rmd
-4. 5. Run calf_production_jags.R
+4. Run calf_production_jags.R
 6. Edit Report_calf_production_2023.Rmd to create a new report.
 
 In Stewart and Weller (2021), the mean ($\lambda$) of the number of whales passing by the survey area is assumed to be the same within a week. 
