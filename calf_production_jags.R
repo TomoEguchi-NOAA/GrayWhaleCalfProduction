@@ -14,7 +14,7 @@ library(bayesplot)
 
 source("GrayWhaleCalfProduction_fcns.R")
 
-save.file <- T
+save.file <- F
 data.ext <- "v3" # "v2"  # or v2
 model <- "v1"
 
@@ -95,7 +95,7 @@ for(i in 1:length(FILES)){
                n.iter = MCMC.params$n.samples,
                DIC = T, parallel=T)
     
-    # This function is in Piedras_Blancas_fcns.R
+    # This function is in GrayWhaleCalfProduction_fcns.R
     jm.MCMC <- MCMC.diag(jm = jm, MCMC.params = MCMC.params)
     
     jm.out[[i]] <- list(jm = jm,

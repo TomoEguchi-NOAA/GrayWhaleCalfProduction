@@ -1276,7 +1276,8 @@ list.sheet.names.inshore <- list(Y1994 = "INSHORE LOG", Y1995 = "Inshore Data", 
                                  Y2015 = "LOGS", Y2016 = "LOGS", Y2017 = "LOGS",
                                  Y2018 = "LOGS", Y2019 = "INSHORE LOGS", Y2021 = "INSHORE LOGS",
                                  Y2022 = "MomCalf Logs 2022 postQC",
-                                 Y2023 = "PiedrasBlancasCalfProductionDat")
+                                 Y2023 = "PiedrasBlancasCalfProductionDat",
+                                 Y2024 = "MOTHER-CALF LOG 2024")
 
 # Sheet names for offshore logs. Starting 2017, offshore logs were eliminated.
 list.sheet.names.offshore <- list(Y1994 = NULL, Y1995 = "Offshore Data", Y1996 = "Sheet1",
@@ -1402,7 +1403,11 @@ list.col.types.inshore <- list(Y1994 = c("date", "numeric", "text", "numeric", "
                                Y2023 = c("date", "numeric", "numeric", "text", "text",
                                          "text", "text","text", "numeric", "text", "text", 
                                          "text", "text", "text", "text", "text", 
-                                         "text", "text"))
+                                         "text", "text"),
+                               Y2024 = c("date", "numeric", "numeric", "text", "numeric",
+                                         "numeric", "numeric","numeric", "numeric", "numeric", 
+                                         "numeric", "text", "text", "text", "text", "numeric", 
+                                         "text", "text", "text", "text"))
 
 # Column types for offshore logs. Some years contain more columns (typically one) with
 # no identifier, which return "New Name" when the file is read. No offshore files starting
@@ -1478,6 +1483,15 @@ list.col.types.offshore <- list(Y1994 = c("date", "numeric", "text", "numeric", 
 
 # Column names that are extracted. These are not all the column names in each Excel spreadsheet.
 # These are the column names from each Excel spreadsheet that were extracted to be used. 
+# Columns are fixed - see get.data above. For recent years, columns need to be the following
+# 1: Date
+# 2: Event
+# 3: Time
+# 4: Observer
+# 5: Sea state
+# 6: Visibility
+# 7: Mother/Calf count
+# 8: Area
 list.col.names.inshore <- list(Y1994 = c("Date", "Event", "Time", "Obs. Code", "Sea State",
                                          "Vis. IN", "Cow  / Calf"),
                                Y1995 = c("Date",	"Event Code",	"Time",	"Observer Code",	
@@ -1512,7 +1526,8 @@ list.col.names.inshore <- list(Y1994 = c("Date", "Event", "Time", "Obs. Code", "
                                Y2019 = c("DATE",	"EVENT", 	"TIME",	"OBS #", "VIS IN",	"SEA ST",	"C/C", "IN/OFF"),
                                Y2021 = c("DATE",	"EVENT", 	"TIME",	"OBS #", "VIS IN",	"SEA ST",	"C/C", "IN/OFF"),
                                Y2022 = c("DATE", 	"EVENT", 	"TIME",	"OBS #", "VIS IN", "SEA ST", "M/C", "LOCATION (IN/OFF)"),
-                               Y2023 = c("DATE", "EVENT", "TIME", "OBS #", "SEA ST", "VIS IN", "M/C", "LOCATION (IN/OFF)"))
+                               Y2023 = c("DATE", "EVENT", "TIME", "OBS #", "SEA ST", "VIS IN", "M/C", "LOCATION (IN/OFF)"),
+                               Y2024 = c("DATE", "EVENT", "TIME", "OBS #", "SEA STATE INSHORE", "VIS INSHORE IN", "M/C", "LOCATION (IN/OFF)"))
 
 # Same for offfshore spreadsheets
 list.col.names.offshore <- list(Y1994 = c("Date", "Event", "Time", "Obs.", "Sea State",

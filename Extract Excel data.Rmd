@@ -5,6 +5,11 @@ output: html_notebook
 
 This notebook is used to extract data from original data files in the Excel format. 
 
+Edited for 2024. 2024-08-13
+Need to update a few constants in GrayWhaleCalfProduction_fcns.R: list.sheet.names.inshore,
+list.col.types.inshore, list.col.names.inshore.
+
+
 ```{r setup}
 rm(list=ls())
 library(tidyverse)
@@ -44,48 +49,64 @@ Event code:
 NEW FUNCTIONS WERE CREATED AND TESTED. THE NEXT CHUNK WILL RUN ALL YEARS. 
 
 ```{r}
-years <- c(1994:2019, 2021:2023)
-inshore.xls.file.idx <- c(1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1)
-offshore.xls.file.idx <- c(2,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,3,3,3,2,2,3,2,NA,NA,NA,NA,NA,NA)
+years <- c(1994:2019, 2021:2024)
+
+# file index indicates which one of "inshore" and "offshore" file should be selected. In some years
+# there were multiple files for each. No offshore files exist since 2017 so NA is in place
+inshore.xls.file.idx <- c(1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1,1)
+offshore.xls.file.idx <- c(2,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,3,3,3,2,2,3,2,NA,NA,NA,NA,NA,NA,NA)
+
+if (length(inshore.xls.file.idx) != length(years)) stop("The length of inshore file index does not match with that of years")
+
+if (length(offshore.xls.file.idx) != length(years)) stop("The length of offshore file index does not match with that of years")
+
 
 for (k in 1:length(years)){
   Year <- years[k]
   dir.name <- paste0("C_C ", Year)
   
-  xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
-  xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[inshore.xls.file.idx[k]])
-  if (!is.na(offshore.xls.file.idx[k])){
-    xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[offshore.xls.file.idx[k]])
-    
-  }
+  out.file.name.inshore <- paste0(out.dir, "Processed_inshore_data_",
+                              Year, "_", ver, ".csv")
   
-  idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Year))
-  if (Year < 2017){
-    out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
-                             list.sheet.names.offshore[[idx.list]],
-                             list.col.types.inshore[[idx.list]], 
-                             list.col.types.offshore[[idx.list]],
-                             list.col.names.inshore[[idx.list]], 
-                             list.col.names.offshore[[idx.list]],
-                             Year, 
-                             xls.file.name.inshore, xls.file.name.offshore,
-                             start.time)
+  if (!file.exists(out.file.name.inshore)){
+    xls.files <- list.files(path = paste0(data.dir, dir.name), pattern = ".xls")
+    xls.file.name.inshore <- paste0(data.dir, dir.name, "/", xls.files[inshore.xls.file.idx[k]])
+    if (!is.na(offshore.xls.file.idx[k])){
+      xls.file.name.offshore <- paste0(data.dir, dir.name, "/", xls.files[offshore.xls.file.idx[k]])
+      
+    }
     
-  } else {
-    out.list <- get.data.inshore.only(Year = Year,
-                                      xls.file.name = xls.file.name.inshore,
-                                      sheet.name = list.sheet.names.inshore[[idx.list]],
-                                      col.types = list.col.types.inshore[[idx.list]],
-                                      col.names = list.col.names.inshore[[idx.list]],
-                                      start.time = start.time)
-  }
-  
-  if (save.files){
-    # Creates file names and saves files
-    files <- file.names(out.dir = out.dir, 
-                        ver = ver, 
-                        Year = Year, 
-                        out.list = out.list)
+    idx.list <- which(names(list.sheet.names.inshore) == paste0("Y", Year))
+    if (Year < 2017){
+      out.list <- get.all.data(list.sheet.names.inshore[[idx.list]], 
+                               list.sheet.names.offshore[[idx.list]],
+                               list.col.types.inshore[[idx.list]], 
+                               list.col.types.offshore[[idx.list]],
+                               list.col.names.inshore[[idx.list]], 
+                               list.col.names.offshore[[idx.list]],
+                               Year, 
+                               xls.file.name.inshore, xls.file.name.offshore,
+                               start.time)
+      
+    } else {
+      out.list <- get.data.inshore.only(Year = Year,
+                                        xls.file.name = xls.file.name.inshore,
+                                        sheet.name = list.sheet.names.inshore[[idx.list]],
+                                        col.types = list.col.types.inshore[[idx.list]],
+                                        col.names = list.col.names.inshore[[idx.list]],
+                                        start.time = start.time)
+    }
+    
+    
+    if (save.files){
+      # Creates file names and saves files
+      files <- file.names(out.dir = out.dir, 
+                          ver = ver, 
+                          Year = Year, 
+                          out.list = out.list)
+      
+    }
+    
     
   }
   
