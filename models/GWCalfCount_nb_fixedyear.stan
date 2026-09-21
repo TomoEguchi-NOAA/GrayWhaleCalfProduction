@@ -10,18 +10,17 @@
 //   - each year's LEVEL is now data-driven with NO pull toward the multi-decade
 //     average.
 //
-// This is the production-candidate fix for the shrinkage concern: it keeps the
-// estimability you need without the upward pull on recent low years. Compare
+// This is the fix for the shrinkage concern: it keeps the
+// estimability without the upward pull on recent low years. Compare
 // year_eff[2025], year_eff[2026] here against the hierarchical model to read off
 // the year-level shrinkage directly.
 //
 // Note on identifiability: log_mu_true = year_eff + week_eff has a soft additive
 // ridge (add c to every year_eff, subtract c from every week_eff). It is broken
-// the same way as your original model -- week_eff is zero-centred by its prior,
-// so year_eff absorbs the level. If you see the level and shape trading off
-// (correlated posteriors, low ESS on year_eff/sigma_week), add a hard
-// sum-to-zero constraint on week_eff (sum_to_zero_vector in Stan >= 2.36, or a
-// soft sum(week_eff) ~ normal(0, 0.001 * n_weeks) penalty).
+// the same way as the original model -- week_eff is zero-centred by its prior,
+// so year_eff absorbs the level. Because of the trade off between the level and 
+// shape trade off (correlated posteriors, low ESS on year_eff/sigma_week), a hard
+// sum-to-zero constraint on week_eff was added (sum_to_zero_vector).
 // =====================================================================
 
 data {
