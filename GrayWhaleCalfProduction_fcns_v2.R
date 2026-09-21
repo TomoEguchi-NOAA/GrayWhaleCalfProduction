@@ -1180,7 +1180,66 @@ find.effort.2 <- function(x){
               shift.df = shift.df))
 }
 
-# Removed MCMC.diag because they can be done easily with the posterior package
+# Compute the "rank-normalized R-hat" by Vehtari et al. (2021) from jagsUI
+# output.
+# Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021). Rank-normalization, folding, and localization: An improved R-hat for assessing convergence of MCMC. Bayesian Analysis, 16(2), 667–718.
+# https://doi.org/10.1214/20-BA1221
+# 
+# The first input is MCMC samples. If the jagsUI output is jm, this is jm$samples.
+# The second input is a string of regular expression. This is a bit
+# complicated. For example, to select "BF.Fixed" and all K parameters, which 
+# are indexed, Use "^BF\\.Fixed|^K\\[" A '^' specifies that the following letter
+# is the beginning of a string. '\\.' specifies a literal period, which needs
+# to be "escaped" by two backslashes (\\). A square bracket needs to be escaped
+# with two backslashes as well. The pipe (|) indicates 'or'.  
+# 
+rank.normalized.R.hat <- function(samples, params, MCMC.params){
+  library(posterior)
+  library(coda)
+  
+  col.names <- grep(params, varnames(samples), value = TRUE, perl = TRUE)
+  subset.mcmc.samples <- samples[, col.names]
+  
+  subset.mcmc.array <- as_draws_array(subset.mcmc.samples, 
+                                      .nchains = MCMC.params$n.chains)
+  
+  rhat.values <- apply(subset.mcmc.array, MARGIN = 3, FUN = posterior::rhat)
+  
+  return(rhat.values)
+}
+
+# MCMC.diag: Extracts MCMC diagnostic statistics, including Rhat, loglikelihood, 
+# DIC, and LOOIC from jags output. 
+# jm is the output from the jags function in the jagsUI package
+# MCMC.params is a named list with n.samples, n.burnin, and n.thin as list items
+# params.to.monitor is a vector of parameter names or a string of regular expression
+# 
+MCMC.diag <- function(jm, MCMC.params, params.to.monitor){
+  n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+  
+  Rank.norm.Rhat <- rank.normalized.R.hat(jm$samples, 
+                                          params = params.to.monitor)
+  
+  max.Rhat <- unlist(lapply(jm$Rhat, FUN = max, na.rm = T))
+  
+  loglik <- jm$sims.list$loglik
+  
+  Reff <- relative_eff(exp(loglik), 
+                       chain_id = rep(1:MCMC.params$n.chains, 
+                                      each = n.per.chain),
+                       cores = MCMC.params$n.chains)
+  loo.out <- loo(loglik, 
+                 r_eff = Reff, 
+                 cores = MCMC.params$n.chains)
+  
+  return(list(DIC = jm$DIC,
+              loglik.obs = loglik,
+              Reff = Reff,
+              Rank.norm.Rhat = Rank.norm.Rhat,
+              max.Rhat = max.Rhat,
+              loo.out = loo.out))
+  
+}
 
 # Function to convert character time (e.g., 1349) to minutes from 
 # a particular start time of the day (e.g., 0700). Default is midnight (0000)
