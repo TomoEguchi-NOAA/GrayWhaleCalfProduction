@@ -29,10 +29,9 @@ model <- "nb_fixedyear"
 # Change this to use results from a previous run
 run.date <- Sys.Date() #"2026-07-09" #"2026-06-26"    
 
-data.path <- paste0("data//Formatted Annual Data Combined ", 
-                    data.ext, "//")
+data.path <- "data//Formatted Annual Data Combined v3//"
 FILES <- list.files(path = data.path,
-                    pattern = paste0(data.ext, ".csv"))
+                    pattern = "v3.csv")
 
 # get data
 all.data <- count.obs <- effort <- week <- n.obs <- n.weeks <- list()
