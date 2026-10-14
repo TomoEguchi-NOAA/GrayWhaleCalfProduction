@@ -17,7 +17,8 @@ library(bayesplot)
 
 source("GrayWhaleCalfProduction_fcns_v2.R")
 
-save.files <- TRUE #FALSE #
+# If TRUE, large .rds files are saved. Even if it is FALSE, .csv files are written.
+save.files <- FALSE #TRUE # 
 
 data.ext <- "v3" # has to be v3
 
@@ -29,10 +30,9 @@ model <- "nb_fixedyear_AR1"
 # Change this to use results from a previous run
 run.date <- Sys.Date() #"2026-07-09" #"2026-06-26"    
 
-data.path <- paste0("data//Formatted Annual Data Combined ", 
-                    data.ext, "//")
+data.path <- "data//Formatted Annual Data Combined v3//"
 FILES <- list.files(path = data.path,
-                    pattern = paste0(data.ext, ".csv"))
+                    pattern = "v3.csv")
 
 # get data
 all.data <- count.obs <- effort <- week <- n.obs <- n.weeks <- list()
@@ -201,12 +201,13 @@ loo.out <- list(raw.log.lik = raw_log_lik,
                 clean.log.lik.mat = clean_log_lik_mat,
                 loo = loo_nb)
 
+write.csv(all.estimates,
+          file = paste0("data//all_estimates_", model, ".csv"))
+write.csv(global_summary,
+          file = paste0("data//global_summary_", model, ".csv"))
+  
 if (save.files){
-  write.csv(all.estimates,
-            file = paste0("data//all_estimates_", model, ".csv"))
-  write.csv(global_summary,
-            file = paste0("data//global_summary_", model, ".csv"))
-  saveRDS(loo.out,
+    saveRDS(loo.out,
           file = paste0("RData//loo_out_", model, ".rds"))
   saveRDS(stan.out,
           file = paste0("RData//stan_out_", model, ".rds"))
