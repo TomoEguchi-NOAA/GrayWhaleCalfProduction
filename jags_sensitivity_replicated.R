@@ -6,15 +6,6 @@
 # model fails to converge. Output: P(non-convergence) vs number of occupied
 # weeks, for the Poisson-Binomial and Negative Binomial models.
 #
-# This turns the single-realization result (Poisson broke at 6-8 weeks but
-# "recovered" at 9) into a dose-response curve. The apparent recovery at 9
-# is almost certainly one draw's luck near a stochastic threshold; averaging
-# over replicates removes it and shows the true failure probability.
-#
-# COMPUTE COST: n_rep * n.weeks * 2 model fits. With n_rep = 100 and 9 weeks
-# that is 1800 fits — hours to overnight. START WITH A PILOT (n_rep = 20) to
-# see the curve shape, then scale up. Results are checkpointed after every
-# replicate, so a long run can be resumed (see the resume block below).
 # =====================================================================
 
 rm(list = ls())
@@ -33,9 +24,8 @@ ess_cut    <- 400
 ckpt_file  <- "RData\\mcmc_breakdown_sweep_checkpoint.rds"
 jm_data_file <- "RData//mcmc_breakdown_jags_data.rds"
 
-# Lighter MCMC for the sweep: enough for an identified model to converge
-# cleanly, while structural non-convergence (R-hat >> 1) still shows at once.
-# If the curve looks noisy near the threshold, raise n.samples.
+# The same MCMC setup as it was used in previous years. Shorter chains
+# produce non-convergence just because of that. 
 MCMC.params <- list(n.samples = 100000, n.thin = 100,
                     n.burnin = 50000, n.chains = 5)
 
@@ -188,7 +178,7 @@ conv_rate <- results_df %>%
             n_ok   = sum(!is.na(converged)), .groups = "drop")
 
 # ---- plot: P(non-convergence) vs count spread ----------------------
-p_break <- ggplot(conv_rate, aes(n_weeks, p_fail, colour = Model)) +
+p.break <- ggplot(conv_rate, aes(n_weeks, p_fail, colour = Model)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2) +
   scale_x_continuous(breaks = all.weeks) +
@@ -203,7 +193,7 @@ p_break <- ggplot(conv_rate, aes(n_weeks, p_fail, colour = Model)) +
 print(p_break)
 
 # optional second panel: mean max-R-hat vs spread, log scale, shows the cliff
-p_rhat <- results_df %>%
+p.rhat <- results_df %>%
   group_by(Model, n_weeks) %>%
   summarise(med_rhat = median(max_rhat, na.rm = TRUE), .groups = "drop") %>%
   ggplot(aes(n_weeks, med_rhat, colour = Model)) +
@@ -212,7 +202,41 @@ p_rhat <- results_df %>%
   scale_x_continuous(breaks = all.weeks) +
   scale_y_log10() +
   labs(x = "Number of weeks the counts were spread across",
-       y = expression("median max " * hat(R)),
+       y = expression("Median max " * hat(R)),
        title = "Convergence diagnostic vs count spread") +
   theme_bw()+
   theme(legend.position = "top") 
+
+# trying to pin down what's causing the dip in 9-weeks below. Not very fruitful
+# Removing all:
+# lapply(jm.data, FUN = function(x){
+#   data.df <- data.frame(count = x$count.obs,
+#                         effort = x$effort,
+#                         week = x$week,
+#                         n.weeks = length(which(x$weekly.max > 0))) %>%
+#     filter(effort > 0, count > 0)
+#   data.wk.df <- filter(data.df, week %in% which(x$weekly.max > 0))
+#   
+# })  -> all.data.list
+# 
+# all.data <- do.call(rbind, all.data.list)
+# 
+# all.data %>% 
+#   group_by(n.weeks) %>%
+#   summarize(n.weeks = first(n.weeks),
+#             n_weak = sum(count <= 2)) -> n.weak
+# 
+# conv_rate %>%
+#   filter(Model == "Poisson-Binomial") %>%
+#   mutate(n_weak = n.weak$n_weak) -> n.weak.conv
+# 
+# p.weak.1 <- ggplot(n.weak.conv) +
+#   geom_line(aes(x = n_weak, y = p_fail)) +
+#   geom_point(aes(x = n_weak, y = p_fail)) +
+#   theme_bw()
+# 
+# p.weak.2 <- ggplot(n.weak.conv) +
+#   geom_line(aes(x = n_weeks, y = n_weak)) +
+#   geom_point(aes(x = n_weeks, y = n_weak)) +
+#   scale_x_continuous(breaks = all.weeks) +
+#   theme_bw()
