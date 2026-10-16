@@ -1,0 +1,91 @@
+---
+title: "Responses to the Reviewers"
+format: html
+editor: visual
+---
+
+## Josh Stewart
+
+*I’m surprised the three different negbin formulations provided nearly identical results. I’d be curious to see figure S6 with observations plotted, to see how the align with the expected migration curves. I also am wondering if only allowing the peak week to shift (but not amplitude) is limiting the ability of the model to fit varying phenologies. As I recall, the timing and shape of the calf wave was pretty different across years, and could have some years with lower amplitudes and wider distributions. Did you try fitting versions with peaks and widths? Or do those become unidentifiable since there are too many parameters?*
+
+Corrected weekly counts have been added to the figure. The ultimate goal of this work was to provide a precise estimate of mother-calf abundance for 2026. Determining changes in migration phenology was not the primary goal and is left for future work. This point has been added to the text in a revised manuscript.
+
+When we define the amplitude (A) to be year-specific, A is poorly identifiable in years with low counts, e.g., 2025 and 2026. This is similar to the dispersion parameter ($\phi$). Similarly for widths ($\tao$), if it were varied among years, they would be difficult to estimate in sparse years. It’s likely that they would be similar to their priors. I have not run these models because estimating the mother-calf abundance was the primary purpose of this analysis.
+
+*Also, looking at the distribution of MC pairs in 2025 and 2026, I’m a little puzzled as to why the poisson model wouldn’t work in 2026. Seems like there were more weeks with observed MC pairs in 2026, which makes me think the model would have had a easier time estimating weekly lambdas than in 2025… What do you think is going on there?*
+
+*Still confused about the driver of the convergence issue! Seems like the poisson mean - variance restriction would break down if a given week had 95% 0’s and then a handful of really high counts during a few survey periods. That would be tough for the poisson to handle. But if there were really low counts in general, I would assume that you’ve got mostly 0s and a couple of 1s sprinkled in here and there? And that doesn’t seem problematic for the poisson to handle. Or are all of the MC pairs concentrated into a couple of survey periods each week?*
+
+The reason was that they were observed over many weeks. If they were observed in just a few weeks, as in 2025, the MCMC would have converged fine. In addition to explaining this point in the text, it is now shown via a sensitivity analysis.
+
+*Sounds like the timing of the migration was more consistent across years than I remembered - so that must be why there’s not much of a difference between the fixed and shifting peak models.*
+
+*It would be good to learn a bit more about the model selection procedure, since LOOIC wasn’t used to choose the ‘best’ negbin formulation. I think some kind of comparison of how well the models fit the observed data (even though they’re also imputing the unobserved counts) would be valuable to decide which is the ‘better’ model. And I’m also curious to see the comparison of the poisson vs negbin under-prediction of 0 counts! You mention that the poisson did much worse (how much worse?).*
+
+In the revised manuscript, we added LOOIC values as well as how the Poisson-Binomial model underpredicted zeros in the posterior predictive check. The result is shown in the supplementary material. The underprediction of zero counts by the Poisson model has been included.
+
+## Tim Tinker
+
+*Here you go, just a few comments to ponder - nothing critical. Overall I think it looks very good, I agree its a big improvement on the previous methodology given the lower counts (as well as various theoretical criticisms of the Poisson-binomial). I do wonder whether a parametric seasonal migration curve might be warranted, as indicated in comments...*
+
+P.4 *Suggest a table summarizing parameters and their prior distributions*
+
+Prior distributions have been added to Table S4
+
+p.6 *Wondering if you considered a zero-inflated or hurdle model, to help with the excess zeros? It is possible to combine the latter with a negative binomial... But also would add an additional parameter (but one that could be shared across years),... might not change results much, if at all, but could resolve the posterior predictive discrepancy.*
+
+We considered a zero-inflated model (but not a hurdle model) but did not adopt it because the zeros in these data are sampling zeros, not structural zeros. A sampling interval with no sightings reflects the absence of passing pairs during that window, governed by the weekly passage rate, effort, and the detection probability already in the model, rather than a separate class of intervals in which a sighting is impossible. We consider the slight under-prediction of zeros (1.9 percentage points) is a result of mild residual overdispersion rather than a distinct zero-generating process. Applying a zero-inflated model with a specific zero-inflation parameter would improve the zero-focused posterior predictive check but it would not be based on the actual sampling process. The negative-binomial dispersion parameter already accommodates the excess zeros relative to the Poisson-Binomial approach, and the abundance estimand (the integrated passage rate) is insensitive to this residual. We therefore retained the negative-binomial specification.
+
+P. 14: *Normal is really not a good distribution for a 0-1 probability. Why not replace this with a beta distribution with the same mean and and variance?*
+
+We agree with this suggestion. We changed the Normal distribution to Beta(20.6967, 2.58418), which has the mean 0.889 and standard deviation of 0.06375.
+
+P. 15: *This part does confuse me a bit. I am pretty sure I understand how this works, but am not convinced it is the most sensible way to get here. Looking at the seasonal curves (both the shared one and the year-specific one), it is pretty clear that the seasonal migration curve is a unimodal distribution, with a single peak (though might not be symmetrical). So why not use a parametric distribution here, such as a skew-normal? You could still transform the log-densities to sum to zero. Or if you want to maintain the potential for unusual shapes, you could use an auto-regressive model here (AR\[1\] or AR\[2\]) to account for the temporal auto-correlation (and still apply a sum-to-1 soft constraint). The current approach would suggest that each week is a random independent draw from a normal distribution, i.e. assumes no auto-correlation, which is not really reflective of reality.*
+
+We agree that treating weekly effects as independent is a simplification. To test its consequence, we considered the fixed-year model with an AR(1) structure on the shared weekly effects, allowing adjacent weeks to be correlated. The estimated autocorrelation was substantial (ρ = 0.82, 95% CI 0.49–0.98), confirming the reviewer’s point that consecutive weeks are not independent. However, the abundance estimates were essentially unchanged — the 2026 median changed from 89 to 88 (95% CI 61–129), and all other years shifted by at most a few pairs. This is because the quantity of interest is the total abundance (the area under the seasonal curve), which is insensitive to the smoothing by the added autocorrelation. We therefore selected the simpler independent model specification as the most parsimonious model, noting that the independence assumption does not materially affect the results. We would also like to emphasize that this report is focused on providing a statistically robust estimate of gray whale calf production for the 2026 season. A various statistical improvements to the estimation model should be considered for the entire time series in the future.
+
+*This is first appearance of lambda in Supp Info, and it is not defined... in the main text lambda is used for mean expected weekly passage rate, I assume its the same here, but it should be defined on first usage in Supp Info*
+
+This ($\lambda$) is now defined in p. 15.
+
+*Should the denominator of this fraction be enclosed in parentheses? That is,* $\phi$ *is divided by the sum of* $\mu_i$ *plus* $p_i$?*
+
+No. $p_i$ is added to $\phi/\mu_i$. It is the conjugate property of gamma and Poisson distributions.
+
+The posterior distribution for $\lambda$ given the observation $c$ is a Gamma distribution with updated shape and rate parameters:
+
+$$\lambda \vert{} c \sim \text{Gamma}\left(\phi + c, \frac{\phi}{\mu} + p\right)$$
+
+Derivation:
+
+Let the distribution for $\lambda$ be a Gamma distribution with shape parameter $\alpha = \phi$ and rate parameter $\beta = \frac{\phi}{\mu}$. Its Probability Density Function (PDF) is proportional to:
+
+$$f(\lambda) \propto \lambda^{\phi - 1} e^{-\left(\frac{\phi}{\mu}\right) \lambda}$$
+
+Let the count $c$ given $\lambda \times p$ follows a Poisson distribution with parameter $\lambda \times p$, where $p$ is a constant that does not depend on $\lambda$. The Probability Mass Function (PMF) is:
+
+$$P(c \vert{} \lambda \times p) = \frac{(\lambda \times p)^c e^{-\lambda \times p}}{c!}$$
+
+Dropping constants that do not depend on $\lambda$, i.e., $p^c$, it is proportional to:
+
+$$P(c \vert{} \lambda) \propto \lambda^c e^{-\lambda \times p}$$
+
+Multiplying the two above:
+
+$$f(\lambda \vert{} c) \propto P(c \vert{} \lambda) \cdot f(\lambda)$$
+
+$$f(\lambda \vert{} c) \propto \left( \lambda^c e^{-\lambda \times p} \right) \cdot \left( \lambda^{\phi - 1} e^{-\left(\frac{\phi}{\mu}\right) \lambda} \right)$$
+
+Combine the terms by grouping the exponents for $\lambda$ and $e$:
+
+$$f(\lambda \vert{} c) \propto \lambda^{(c + \phi) - 1} e^{-\lambda \left(p + \frac{\phi}{\mu}\right)}$$
+
+This is the kernel of another Gamma distribution. 
+
+P. 16: *This is exactly why I was suggesting using a parametric model for the shared seasonal curve above... again, skew normal might be better than normal as it relaxes the symmetrical assumption*
+
+As we mentioned previously, the exact approach to the seasonal curve did not make material difference in the estimate of mother-calf abundance. We used the simplest approach to provide the estimate for 2026. Thorough analyses of other possible approaches for the entire time series should be considered in the future.
+
+P. 22: *Maybe add prior distributions to this table?*
+
+Prior distributions have been added to Table S4.
